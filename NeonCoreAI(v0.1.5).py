@@ -15,8 +15,12 @@ from tkinter import filedialog, scrolledtext, messagebox, simpledialog
 # PERSISTENT HISTORY STORAGE (Embedded)
 # ============================================================================
 # NEON_HISTORY_START
-NEON_HISTORY = json.loads('{"chats": {"1": {"name": "New Session", "time": "2026-06-24T18:12:18.876328"}}, "messages": {"1": [{"role": "user", "text": "what is a banana"}, {"role": "bot", "text": "I searched everything but couldn\'t find a clear answer. Try being more specific?"}, {"role": "user", "text": "what is a banana"}, {"role": "bot", "text": "A banana is an edible fruit from banana plants. It is usually yellow when ripe, soft inside, sweet, and high in carbohydrates and potassium."}]}, "next_id": 2}')
+NEON_HISTORY = json.loads('{"chats": {"1": {"name": "New Session", "time": "2026-06-24T19:45:45.965570"}}, "messages": {"1": [{"role": "user", "text": "what is a banana"}, {"role": "bot", "text": "A banana is an edible fruit from banana plants. It is usually yellow when ripe, soft inside, sweet, and high in carbohydrates and potassium."}]}, "next_id": 2}')
 # NEON_HISTORY_END
+
+# NEON_SETTINGS_START
+NEON_SETTINGS = json.loads('{"theme": "Neon", "intelligence": "Balanced", "speed": "Normal", "result_count": 5, "font_size": 12, "web_search": true, "wikipedia": true, "ad_filter": true, "response_style": "Balanced"}')
+# NEON_SETTINGS_END
 
 # Image support via Pillow
 try:
@@ -65,13 +69,39 @@ class MemoryDatabase:
             with open(path, "w", encoding="utf-8") as f: f.write(source)
         except: pass
 
+class SettingsStore:
+    """Settings embedded in ai.py beside the chat history."""
+    defaults = {
+        "theme": "Neon",
+        "intelligence": "Balanced",
+        "speed": "Normal",
+        "result_count": 5,
+        "font_size": 12,
+        "web_search": True,
+        "wikipedia": True,
+        "ad_filter": True,
+        "response_style": "Balanced"
+    }
+    def __init__(self):
+        self.data = dict(self.defaults)
+        self.data.update(NEON_SETTINGS)
+    def save(self):
+        try:
+            path = os.path.abspath(__file__)
+            with open(path, "r", encoding="utf-8") as f: source = f.read()
+            settings = json.dumps(self.data, ensure_ascii=False)
+            replacement = f"# NEON_SETTINGS_START\nNEON_SETTINGS = json.loads({settings!r})\n# NEON_SETTINGS_END"
+            source = re.sub(r"# NEON_SETTINGS_START\nNEON_SETTINGS = .*?\n# NEON_SETTINGS_END", replacement, source, flags=re.DOTALL)
+            with open(path, "w", encoding="utf-8") as f: f.write(source)
+        except: pass
+
 # ============================================================================
 # OMNI-BRAIN: THE COMPLETE INTELLIGENCE ENGINE
 # ============================================================================
 
 class OmniBrain:
     """Local-first brain for chat, math, code, memory, explanations, and research."""
-    def __init__(self):
+    def __init__(self, settings=None):
         self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
         self.blacklist = ["ebay", "amazon", "aliexpress", "walmart", "target", "etsy", "wish", "temu", "alibaba"]
         self.ad_triggers = ["price", "shipping", "buy now", "discount", "sale", "stock", "cart", "$", "€", "£"]
@@ -82,11 +112,18 @@ class OmniBrain:
             "ai": "AI means artificial intelligence: software designed to perform tasks that normally require human-like reasoning, language understanding, perception, or decision-making.",
             "computer": "A computer is an electronic machine that processes data using instructions called programs."
         }
+        self.settings = settings or dict(SettingsStore.defaults)
+
+    def update_settings(self, settings):
+        self.settings = settings
+
+    def _timeout(self):
+        return {"Fast": 5, "Normal": 10, "Deep": 15}.get(self.settings.get("speed"), 10)
 
     def _fetch(self, url):
         try:
             req = urllib.request.Request(url, headers={'User-Agent': self.user_agent})
-            with urllib.request.urlopen(req, timeout=12) as response:
+            with urllib.request.urlopen(req, timeout=self._timeout()) as response:
                 return response.read().decode('utf-8', errors='ignore')
         except Exception:
             return ""
@@ -155,7 +192,8 @@ if __name__ == '__main__':
             return None
         if not history:
             return "I do not have any saved messages in this chat yet."
-        recent = history[-6:]
+        limit = 4 if self.settings.get("response_style") == "Short" else 10 if self.settings.get("response_style") == "Detailed" else 6
+        recent = history[-limit:]
         lines = []
         for item in recent:
             role = "You" if item.get("role") == "user" else "NEON"
@@ -172,26 +210,30 @@ if __name__ == '__main__':
         topic = re.sub(r'^(explain|why|how)\s+', '', query, flags=re.I).strip()
         if not topic:
             return None
-        return (
-            f"Here is the simple version of {topic}:\n"
-            f"• Core idea: it is a concept or process with parts that interact.\n"
-            f"• How to understand it: identify the inputs, the steps, and the output.\n"
-            f"• Best next step: ask me for an example, a diagram-style breakdown, or code."
-        )
+        if self.settings.get("response_style") == "Short":
+            return f"{topic}: identify what goes in, what happens, and what comes out."
+        extra = "\n• Deep mode: I can also research current sources if you ask for latest/current info." if self.settings.get("response_style") == "Detailed" else ""
+        return (f"Here is the simple version of {topic}:\n"
+                f"• Core idea: it is a concept or process with parts that interact.\n"
+                f"• How to understand it: identify the inputs, the steps, and the output.\n"
+                f"• Best next step: ask me for an example, a diagram-style breakdown, or code.{extra}")
 
     def _research(self, query):
+        if not self.settings.get("web_search", True):
+            return None
         encoded = urllib.parse.quote(query)
         results = []
-        try:
-            wiki_search = json.loads(self._fetch(f"https://en.wikipedia.org/w/api.php?action=opensearch&search={encoded}&limit=1&format=json"))
-            if len(wiki_search) > 1 and wiki_search[1]:
-                title = wiki_search[1][0]
-                wiki_sum = json.loads(self._fetch(f"https://en.wikipedia.org/api/rest_v1/page/summary/{urllib.parse.quote(title.replace(' ', '_'))}"))
-                extract = self._clean(wiki_sum.get("extract", ""))
-                if extract:
-                    results.append(("Core Fact", extract))
-        except Exception:
-            pass
+        if self.settings.get("wikipedia", True):
+            try:
+                wiki_search = json.loads(self._fetch(f"https://en.wikipedia.org/w/api.php?action=opensearch&search={encoded}&limit=1&format=json"))
+                if len(wiki_search) > 1 and wiki_search[1]:
+                    title = wiki_search[1][0]
+                    wiki_sum = json.loads(self._fetch(f"https://en.wikipedia.org/api/rest_v1/page/summary/{urllib.parse.quote(title.replace(' ', '_'))}"))
+                    extract = self._clean(wiki_sum.get("extract", ""))
+                    if extract:
+                        results.append(("Core Fact", extract))
+            except Exception:
+                pass
         try:
             instant = json.loads(self._fetch(f"https://api.duckduckgo.com/?q={encoded}&format=json&no_html=1"))
             answer = self._clean(instant.get("AbstractText") or instant.get("Answer") or "")
@@ -206,12 +248,12 @@ if __name__ == '__main__':
             for snippet in snippets:
                 text = self._clean(snippet)
                 low = text.lower()
-                if any(t in low for t in self.ad_triggers) and not any(k in query.lower() for k in ["buy", "shop", "price"]):
+                if self.settings.get("ad_filter", True) and any(t in low for t in self.ad_triggers) and not any(k in query.lower() for k in ["buy", "shop", "price"]):
                     continue
                 if len(text) > 30 and text not in cleaned:
                     cleaned.append(text)
             if cleaned:
-                results.append(("Web Findings", cleaned[:5]))
+                results.append(("Web Findings", cleaned[:int(self.settings.get("result_count", 5))]))
         except Exception:
             pass
         if not results:
@@ -237,7 +279,7 @@ if __name__ == '__main__':
         if q_low in ["time", "date", "today"]:
             return f"It's {datetime.datetime.now().strftime('%I:%M %p, %A, %B %d, %Y')}."
         if "what can you do" in q_low or q_low == "help":
-            return "I can answer locally, calculate math, write starter code, explain topics, recap chat history, preview images, and research the web when needed."
+            return "I can answer locally, calculate math, write starter code, explain topics, recap chat history, preview images, research the web, and change behavior from Settings."
 
         for answerer in (self._memory_answer,):
             ans = answerer(query, history)
@@ -261,9 +303,20 @@ if __name__ == '__main__':
         if explain_ans and not any(k in q_low for k in ["latest", "current", "news", "today"]):
             return explain_ans
 
+        if self.settings.get("intelligence") == "Local Only":
+            return "Local-only intelligence is enabled. I handled math, code, memory, and built-in facts first, but this needs web research. Turn on Balanced or Deep in Settings."
+
+        needs_research = any(k in q_low for k in ["latest", "current", "news", "today", "search", "find", "who is", "what is", "where is", "when did"])
+        if self.settings.get("intelligence") == "Fast" and not needs_research:
+            return "Fast intelligence is enabled, so I skipped deep research. Ask with `search` or switch to Balanced/Deep for broader answers."
+
         search_query = query
         if len(query.split()) < 4 and self.last_subject and any(w in q_low for w in ["it", "this", "that", "more", "why", "how"]):
             search_query = f"{self.last_subject} {query}"
+        if self.settings.get("intelligence") == "Deep":
+            history_context = self._history_text(history, limit=4)
+            if history_context:
+                search_query = f"{history_context}\nCurrent question: {search_query}"
         if len(query.split()) > 2:
             self.last_subject = query
 
@@ -281,59 +334,127 @@ if __name__ == '__main__':
 # ============================================================================
 
 class NeonUI:
+    themes = {
+        "Neon": {"bg": "#000000", "panel": "#080808", "field": "#0F0F0F", "accent": "#FF5F00", "bot": "#00FFCC", "text": "#FFFFFF", "muted": "#666666"},
+        "Cyber Blue": {"bg": "#020712", "panel": "#071426", "field": "#0B1D33", "accent": "#4DA3FF", "bot": "#6EFFD2", "text": "#EAF4FF", "muted": "#7D8EA3"},
+        "Matrix": {"bg": "#000000", "panel": "#031007", "field": "#06180C", "accent": "#00FF66", "bot": "#B6FFB6", "text": "#E8FFE8", "muted": "#4E8F61"},
+        "Light": {"bg": "#F4F4F4", "panel": "#E5E5E5", "field": "#FFFFFF", "accent": "#C44700", "bot": "#006B5B", "text": "#111111", "muted": "#555555"},
+        "Midnight": {"bg": "#070A14", "panel": "#10182A", "field": "#141F35", "accent": "#D78CFF", "bot": "#7DD3FC", "text": "#F8FAFC", "muted": "#8A95AA"}
+    }
     def __init__(self, root):
         self.root = root
         self.root.title("NEON CORE AI")
         self.root.geometry("1100x850")
-        self.root.configure(bg="#000000")
         
         self.memory = MemoryDatabase()
         self.chat_id = self.memory.get_or_create_chat("Main Session")
-        self.brain = OmniBrain()
+        self.settings_store = SettingsStore()
+        self.settings = self.settings_store.data
+        self.brain = OmniBrain(self.settings)
         self.img_cache = []
         
-        self.orange, self.cyan = "#FF5F00", "#00FFCC"
+        self.theme = self.themes.get(self.settings.get("theme"), self.themes["Neon"])
+        self.orange, self.cyan = self.theme["accent"], self.theme["bot"]
+        self.root.configure(bg=self.theme["bg"])
         self._build_ui()
+        self.apply_theme()
         self.load_history()
 
     def _build_ui(self):
-        side = tk.Frame(self.root, bg="#080808", width=200)
+        side = tk.Frame(self.root, bg=self.theme["panel"], width=200)
         side.pack(side=tk.LEFT, fill=tk.Y)
         side.pack_propagate(False)
         
-        tk.Label(side, text="SESSIONS", bg="#080808", fg=self.orange, font=("Consolas", 12, "bold")).pack(pady=20)
-        self.chat_list = tk.Listbox(side, bg="#080808", fg="#666666", bd=0, highlightthickness=0, font=("Consolas", 10))
+        tk.Label(side, text="SESSIONS", bg=self.theme["panel"], fg=self.orange, font=("Consolas", 12, "bold")).pack(pady=20)
+        self.chat_list = tk.Listbox(side, bg=self.theme["panel"], fg=self.theme["muted"], bd=0, highlightthickness=0, font=("Consolas", 10))
         self.chat_list.pack(fill=tk.BOTH, expand=True, padx=10)
         self.refresh_chats()
         
-        tk.Button(side, text="+ New Chat", bg="#080808", fg=self.cyan, bd=0, command=self.new_chat).pack(pady=5)
-        tk.Button(side, text="× Clear History", bg="#080808", fg=self.orange, bd=0, command=self.clear_history).pack(pady=10)
+        tk.Button(side, text="+ New Chat", bg=self.theme["panel"], fg=self.cyan, bd=0, command=self.new_chat).pack(pady=5)
+        tk.Button(side, text="⚙ Settings", bg=self.theme["panel"], fg=self.theme["text"], bd=0, command=self.open_settings).pack(pady=5)
+        tk.Button(side, text="× Clear History", bg=self.theme["panel"], fg=self.orange, bd=0, command=self.clear_history).pack(pady=10)
         
-        main = tk.Frame(self.root, bg="#000000")
+        main = tk.Frame(self.root, bg=self.theme["bg"])
         main.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
-        header = tk.Frame(main, bg="#0A0A0A", height=60)
+        header = tk.Frame(main, bg=self.theme["panel"], height=60)
         header.pack(fill=tk.X)
-        tk.Label(header, text="NEON CORE AI", bg="#0A0A0A", fg=self.orange, font=("Consolas", 14, "bold")).pack(side=tk.LEFT, padx=30)
+        tk.Label(header, text="NEON CORE AI", bg=self.theme["panel"], fg=self.orange, font=("Consolas", 14, "bold")).pack(side=tk.LEFT, padx=30)
         
-        self.display = scrolledtext.ScrolledText(main, bg="#000000", fg="#FFFFFF", font=("Consolas", 12), bd=0, wrap=tk.WORD, state='disabled', padx=20, pady=20)
+        self.display = scrolledtext.ScrolledText(main, bg=self.theme["bg"], fg=self.theme["text"], font=("Consolas", int(self.settings.get("font_size", 12))), bd=0, wrap=tk.WORD, state='disabled', padx=20, pady=20)
         self.display.pack(fill=tk.BOTH, expand=True)
-        self.display.tag_config("user", foreground=self.orange, font=("Consolas", 12, "bold"))
+        self.display.tag_config("user", foreground=self.orange, font=("Consolas", int(self.settings.get("font_size", 12)), "bold"))
         self.display.tag_config("bot", foreground=self.cyan)
-        self.display.tag_config("code", foreground="#FFFFFF", background="#111111")
+        self.display.tag_config("code", foreground=self.theme["text"], background=self.theme["field"])
 
-        footer = tk.Frame(main, bg="#000000", height=90)
+        footer = tk.Frame(main, bg=self.theme["bg"], height=90)
         footer.pack(fill=tk.X, padx=20, pady=10)
         footer.pack_propagate(False)
         
-        wrap = tk.Frame(footer, bg="#0F0F0F", highlightthickness=1, highlightbackground="#222222")
+        wrap = tk.Frame(footer, bg=self.theme["field"], highlightthickness=1, highlightbackground=self.theme["muted"])
         wrap.pack(fill=tk.BOTH, expand=True)
         
-        tk.Button(wrap, text="+", bg="#0F0F0F", fg=self.orange, bd=0, font=("Arial", 20), command=self.load_file).pack(side=tk.LEFT, padx=15)
-        self.entry = tk.Entry(wrap, bg="#0F0F0F", fg="#FFFFFF", font=("Consolas", 13), bd=0, insertbackground=self.orange)
+        tk.Button(wrap, text="+", bg=self.theme["field"], fg=self.orange, bd=0, font=("Arial", 20), command=self.load_file).pack(side=tk.LEFT, padx=15)
+        self.entry = tk.Entry(wrap, bg=self.theme["field"], fg=self.theme["text"], font=("Consolas", int(self.settings.get("font_size", 12)) + 1), bd=0, insertbackground=self.orange)
         self.entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.entry.bind("<Return>", lambda e: self.send())
-        tk.Button(wrap, text="➜", bg="#0F0F0F", fg=self.orange, bd=0, font=("Arial", 20), command=self.send).pack(side=tk.RIGHT, padx=15)
+        tk.Button(wrap, text="➜", bg=self.theme["field"], fg=self.orange, bd=0, font=("Arial", 20), command=self.send).pack(side=tk.RIGHT, padx=15)
+
+    def apply_theme(self):
+        self.theme = self.themes.get(self.settings.get("theme"), self.themes["Neon"])
+        self.orange, self.cyan = self.theme["accent"], self.theme["bot"]
+        self.root.configure(bg=self.theme["bg"])
+        self.display.configure(bg=self.theme["bg"], fg=self.theme["text"], font=("Consolas", int(self.settings.get("font_size", 12))))
+        self.display.tag_config("user", foreground=self.orange, font=("Consolas", int(self.settings.get("font_size", 12)), "bold"))
+        self.display.tag_config("bot", foreground=self.cyan)
+        self.display.tag_config("code", foreground=self.theme["text"], background=self.theme["field"])
+        self.entry.configure(bg=self.theme["field"], fg=self.theme["text"], font=("Consolas", int(self.settings.get("font_size", 12)) + 1), insertbackground=self.orange)
+
+    def open_settings(self):
+        win = tk.Toplevel(self.root)
+        win.title("NEON Settings")
+        win.geometry("420x520")
+        win.configure(bg=self.theme["bg"])
+        values = {
+            "theme": tk.StringVar(value=self.settings.get("theme", "Neon")),
+            "intelligence": tk.StringVar(value=self.settings.get("intelligence", "Balanced")),
+            "speed": tk.StringVar(value=self.settings.get("speed", "Normal")),
+            "response_style": tk.StringVar(value=self.settings.get("response_style", "Balanced")),
+            "result_count": tk.IntVar(value=int(self.settings.get("result_count", 5))),
+            "font_size": tk.IntVar(value=int(self.settings.get("font_size", 12))),
+            "web_search": tk.BooleanVar(value=bool(self.settings.get("web_search", True))),
+            "wikipedia": tk.BooleanVar(value=bool(self.settings.get("wikipedia", True))),
+            "ad_filter": tk.BooleanVar(value=bool(self.settings.get("ad_filter", True)))
+        }
+
+        def row(label):
+            tk.Label(win, text=label, bg=self.theme["bg"], fg=self.theme["text"], anchor="w", font=("Consolas", 10, "bold")).pack(fill=tk.X, padx=18, pady=(12, 2))
+
+        row("Theme")
+        tk.OptionMenu(win, values["theme"], *self.themes.keys()).pack(fill=tk.X, padx=18)
+        row("Intelligence")
+        tk.OptionMenu(win, values["intelligence"], "Fast", "Balanced", "Deep", "Local Only").pack(fill=tk.X, padx=18)
+        row("Speed")
+        tk.OptionMenu(win, values["speed"], "Fast", "Normal", "Deep").pack(fill=tk.X, padx=18)
+        row("Response Style")
+        tk.OptionMenu(win, values["response_style"], "Short", "Balanced", "Detailed").pack(fill=tk.X, padx=18)
+        row("Web Result Count")
+        tk.Scale(win, from_=1, to=10, orient=tk.HORIZONTAL, variable=values["result_count"], bg=self.theme["bg"], fg=self.theme["text"], highlightthickness=0).pack(fill=tk.X, padx=18)
+        row("Font Size")
+        tk.Scale(win, from_=9, to=18, orient=tk.HORIZONTAL, variable=values["font_size"], bg=self.theme["bg"], fg=self.theme["text"], highlightthickness=0).pack(fill=tk.X, padx=18)
+        tk.Checkbutton(win, text="Enable web search", variable=values["web_search"], bg=self.theme["bg"], fg=self.theme["text"], selectcolor=self.theme["field"]).pack(anchor="w", padx=18, pady=4)
+        tk.Checkbutton(win, text="Use Wikipedia context", variable=values["wikipedia"], bg=self.theme["bg"], fg=self.theme["text"], selectcolor=self.theme["field"]).pack(anchor="w", padx=18, pady=4)
+        tk.Checkbutton(win, text="Filter ads/shopping noise", variable=values["ad_filter"], bg=self.theme["bg"], fg=self.theme["text"], selectcolor=self.theme["field"]).pack(anchor="w", padx=18, pady=4)
+
+        def save_settings():
+            for key, var in values.items():
+                self.settings[key] = var.get()
+            self.settings_store.save()
+            self.brain.update_settings(self.settings)
+            self.apply_theme()
+            win.destroy()
+
+        tk.Button(win, text="Save Settings", bg=self.theme["field"], fg=self.orange, bd=0, font=("Consolas", 12, "bold"), command=save_settings).pack(fill=tk.X, padx=18, pady=18)
 
     def refresh_chats(self):
         self.chat_list.delete(0, tk.END)
