@@ -9,3 +9,6 @@ Tryna make an ai from basically scratch, on python.
 * (Other things are imported too, but they are usually already provided with standard python 3 installations.)
 
 **Contact me, `shozanthebozan`, at `kmoruihrdp@hotmail.com`**
+
+**DISCLAIMER:**
+Neon Core AI is an open-source, hobbyist project provided "AS IS" under the Apache 2.0 License. This software automatically retrieves summaries and search snippets directly from live third-party web pages (such as Wikipedia) via APIs. We do not filter, endorse, or assume any responsibility or liability for the accuracy, lawfulness, or content of the data fetched from the web.
