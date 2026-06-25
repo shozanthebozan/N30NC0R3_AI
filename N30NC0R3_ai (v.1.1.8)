@@ -16,11 +16,11 @@ from tkinter import filedialog, scrolledtext, messagebox, simpledialog, ttk
 # PERSISTENT STORAGE (Safe Base64 Encoding)
 # ============================================================================
 # NEON_HISTORY_START
-NEON_HISTORY_B64 = 'eyJjaGF0cyI6IHsiMSI6IHsibmFtZSI6ICJOZXcgU2Vzc2lvbiIsICJ0aW1lIjogIjIwMjYtMDYtMjVUMTY6Mzk6NTMuNzYyNzIxIn19LCAibWVzc2FnZXMiOiB7IjEiOiBbXX0sICJuZXh0X2lkIjogMn0='
+NEON_HISTORY_B64 = 'eyJjaGF0cyI6IHsiMSI6IHsibmFtZSI6ICJOZXcgU2Vzc2lvbiIsICJ0aW1lIjogIjIwMjYtMDYtMjVUMjA6Mzk6MDEuODg0MTE5In19LCAibWVzc2FnZXMiOiB7IjEiOiBbXX0sICJuZXh0X2lkIjogMn0='
 # NEON_HISTORY_END
 
 # NEON_SETTINGS_START
-NEON_SETTINGS_B64 = 'eyJ0aGVtZSI6ICJOZW9uIFBpbmsiLCAiaW50ZWxsaWdlbmNlIjogIkJhbGFuY2VkIiwgInJlc3BvbnNlX3N0eWxlIjogIkJhbGFuY2VkIiwgInNwZWVkIjogIk5vcm1hbCIsICJyZXN1bHRfY291bnQiOiA1LCAiZm9udF9zaXplIjogMTIsICJ3ZWJfc2VhcmNoIjogZmFsc2UsICJ3aWtpcGVkaWEiOiBmYWxzZSwgImxpdmVfc2VhcmNoIjogZmFsc2UsICJnaXRodWJfc2VhcmNoIjogZmFsc2UsICJyZWRkaXRfc2VhcmNoIjogZmFsc2UsICJuZXdzX3NlYXJjaCI6IGZhbHNlLCAiYWRfZmlsdGVyIjogZmFsc2UsICJzYXZlX21lbW9yeSI6IGZhbHNlLCAic2F2ZV9sb2NhbGx5IjogZmFsc2UsICJzYXZlX3BhdGgiOiAiIn0='
+NEON_SETTINGS_B64 = 'eyJ0aGVtZSI6ICJOZW9uIFBpbmsiLCAiaW50ZWxsaWdlbmNlIjogIkJhbGFuY2VkIiwgInJlc3BvbnNlX3N0eWxlIjogIkJhbGFuY2VkIiwgInNwZWVkIjogIk5vcm1hbCIsICJyZXN1bHRfY291bnQiOiA1LCAiZm9udF9zaXplIjogMTIsICJ3ZWJfc2VhcmNoIjogdHJ1ZSwgIndpa2lwZWRpYSI6IHRydWUsICJsaXZlX3NlYXJjaCI6IHRydWUsICJnaXRodWJfc2VhcmNoIjogZmFsc2UsICJyZWRkaXRfc2VhcmNoIjogZmFsc2UsICJuZXdzX3NlYXJjaCI6IGZhbHNlLCAiYWRfZmlsdGVyIjogdHJ1ZSwgInNhdmVfbWVtb3J5IjogdHJ1ZSwgInNhdmVfbG9jYWxseSI6IGZhbHNlLCAic2F2ZV9wYXRoIjogIiJ9'
 # NEON_SETTINGS_END
 
 def _decode_store(b64_str):
@@ -38,7 +38,7 @@ except ImportError:
     HAS_PIL = False
 
 # ============================================================================
-# OMNI-BRAIN: THE COMPLETE INTELLIGENCE ENGINE
+# THINKING BRAIN: N30N C0RE AI
 # ============================================================================
 
 class ThinkingBrain:
@@ -63,16 +63,22 @@ class ThinkingBrain:
 
     def respond(self, query, history):
         q_low = query.lower().strip()
+        
+        # Identity Check
+        if any(k in q_low for k in ["who are you", "your name"]):
+            return "I am N30N C0RE AI, your advanced local intelligence hub."
+
         if any(q_low == g or q_low.startswith(g+" ") for g in ["hi", "hello", "hey", "yo", "sup"]):
-            return "Neon Core AI active. Dynamic research mode initialized."
+            return "N30N C0RE AI active. Dynamic research mode initialized."
+            
         if q_low in ["time", "date", "today"]:
-            return f"It is {datetime.datetime.now().strftime('%I:%M %p, %A, %B %d, %Y')}."
+            return f"Synchronized Time: {datetime.datetime.now().strftime('%I:%M %p, %A, %B %d, %Y')}."
         
         if re.search(r'[\d\+\-\*\/\(\)\^]', query) and any(c in query for c in "+-*/^%"):
             try:
                 expr = query.replace("^", "**")
                 clean = re.sub(r'[^0-9\+\-\*\/\(\)\.\%\s\*\^a-zA-Z]', '', expr)
-                return f"🔢 Calculated: {eval(clean, {'__builtins__': None}, {k: getattr(math, k) for k in dir(math) if not k.startswith('_')})}"
+                return f"🔢 Computational Result: {eval(clean, {'__builtins__': None}, {k: getattr(math, k) for k in dir(math) if not k.startswith('_')})}"
             except: pass
 
         results = []
@@ -88,7 +94,7 @@ class ThinkingBrain:
         if self.settings.get("wikipedia", True):
             try:
                 wiki_sum = json.loads(self._fetch(f"https://en.wikipedia.org/api/rest_v1/page/summary/{urllib.parse.quote(query.replace(' ', '_'))}"))
-                if wiki_sum.get("extract"): results.append(("Core Fact", wiki_sum["extract"]))
+                if wiki_sum.get("extract"): results.append(("Encyclopedia", wiki_sum["extract"]))
             except: pass
 
         if self.settings.get("web_search", True):
@@ -108,14 +114,7 @@ class ThinkingBrain:
                 if web_intel: results.append(("Web Intelligence", web_intel[:int(self.settings.get("result_count", 5))]))
             except: pass
 
-        if self.settings.get("news_search"):
-            try:
-                news_html = self._fetch(f"https://news.google.com/rss/search?q={encoded}&hl=en-US")
-                titles = re.findall(r'<item><title>(.*?)</title>', news_html)
-                if titles: results.append(("Latest News", titles[0]))
-            except: pass
-
-        if not results: return "I searched multiple global layers but found no definitive data. Please provide more context."
+        if not results: return "I attempted to research that across all global layers but found no definitive data. Try rephrasing?"
 
         final_resp = ""
         for tag, content in results:
@@ -197,7 +196,7 @@ class NeonUI:
     }
 
     def __init__(self, root):
-        self.root = root; self.root.title("NEON CORE AI"); self.root.geometry("1100x900")
+        self.root = root; self.root.title("N30N C0RE AI"); self.root.geometry("1100x900")
         self.settings_store = SettingsStore(); self.settings = self.settings_store.data
         self.memory = MemoryDatabase(self.settings); self.chat_id = self.memory.get_or_create_chat()
         self.brain = ThinkingBrain(self.settings); self.img_cache = []
@@ -205,7 +204,7 @@ class NeonUI:
 
     def _build_layout(self):
         self.header = tk.Frame(self.root, height=60); self.header.pack(side=tk.TOP, fill=tk.X)
-        self.logo = tk.Label(self.header, text="NEON CORE AI", font=("Consolas", 16, "bold")); self.logo.pack(side=tk.LEFT, padx=30)
+        self.logo = tk.Label(self.header, text="N30N C0RE AI", font=("Consolas", 16, "bold")); self.logo.pack(side=tk.LEFT, padx=30)
         self.paned = tk.PanedWindow(self.root, orient=tk.HORIZONTAL, bd=0, sashwidth=2); self.paned.pack(fill=tk.BOTH, expand=True)
         self.side = tk.Frame(self.paned, width=220); self.side.pack_propagate(False); self.paned.add(self.side)
         self.side_label = tk.Label(self.side, text="SESSIONS", font=("Consolas", 11, "bold")); self.side_label.pack(pady=20)
@@ -240,12 +239,8 @@ class NeonUI:
         theme_name = self.settings.get("theme", "Neon Orange")
         theme = self.themes.get(theme_name, self.themes["Neon Orange"])
         win.configure(bg=theme["bg"])
-        
-        def _get_val(k):
-            v = self.settings.get(k)
-            if v is None: return False
-            return v
-
+        def _get_val(k, default=False):
+            v = self.settings.get(k); return v if v is not None else default
         v = {
             "theme": tk.StringVar(value=str(self.settings.get("theme", "Neon Orange"))),
             "intelligence": tk.StringVar(value=str(self.settings.get("intelligence", "Balanced"))),
@@ -253,21 +248,19 @@ class NeonUI:
             "speed": tk.StringVar(value=str(self.settings.get("speed", "Normal"))),
             "result_count": tk.StringVar(value=str(self.settings.get("result_count", 5))),
             "font_size": tk.StringVar(value=str(self.settings.get("font_size", 12))),
-            "web_search": tk.BooleanVar(value=_get_val("web_search")),
-            "wikipedia": tk.BooleanVar(value=_get_val("wikipedia")),
-            "live_search": tk.BooleanVar(value=_get_val("live_search")),
-            "github_search": tk.BooleanVar(value=_get_val("github_search")),
-            "reddit_search": tk.BooleanVar(value=_get_val("reddit_search")),
-            "news_search": tk.BooleanVar(value=_get_val("news_search")),
-            "ad_filter": tk.BooleanVar(value=_get_val("ad_filter")),
-            "save_memory": tk.BooleanVar(value=_get_val("save_memory")),
-            "save_locally": tk.BooleanVar(value=_get_val("save_locally")),
+            "web_search": tk.BooleanVar(value=_get_val("web_search", True)),
+            "wikipedia": tk.BooleanVar(value=_get_val("wikipedia", True)),
+            "live_search": tk.BooleanVar(value=_get_val("live_search", True)),
+            "github_search": tk.BooleanVar(value=_get_val("github_search", False)),
+            "reddit_search": tk.BooleanVar(value=_get_val("reddit_search", False)),
+            "news_search": tk.BooleanVar(value=_get_val("news_search", False)),
+            "ad_filter": tk.BooleanVar(value=_get_val("ad_filter", True)),
+            "save_memory": tk.BooleanVar(value=_get_val("save_memory", True)),
+            "save_locally": tk.BooleanVar(value=_get_val("save_locally", False)),
             "save_path": tk.StringVar(value=str(self.settings.get("save_path", "")))
         }
-
         container = tk.Frame(win, bg=theme["bg"]); container.pack(fill=tk.BOTH, expand=True, padx=40, pady=20)
         def _l(t): tk.Label(container, text=t, bg=theme["bg"], fg=theme["accent"], font=("Consolas", 10, "bold")).pack(anchor="w", pady=(15, 2))
-        
         _l("UI THEME"); tk.OptionMenu(container, v["theme"], *self.themes.keys()).pack(fill=tk.X)
         _l("INTELLIGENCE MODE"); tk.OptionMenu(container, v["intelligence"], "Fast", "Balanced", "Deep", "Local Only").pack(fill=tk.X)
         _l("RESPONSE STYLE"); tk.OptionMenu(container, v["response_style"], "Short", "Balanced", "Detailed").pack(fill=tk.X)
@@ -282,15 +275,28 @@ class NeonUI:
         tk.Entry(p_f, textvariable=v["save_path"], bg=theme["field"], fg=theme["text"], bd=0).pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=5)
         tk.Button(p_f, text="...", command=lambda: v["save_path"].set(filedialog.asksaveasfilename(defaultextension=".json")), bg=theme["field"], fg=theme["bot"], bd=0).pack(side=tk.RIGHT, padx=5)
 
-        def _save():
+        def _apply():
             for k in v:
                 val = v[k].get()
-                if k == "result_count" or k == "font_size": 
+                if k in ["result_count", "font_size"]:
                     try: self.settings[k] = int(val)
                     except: pass
                 else: self.settings[k] = val
-            self.settings_store.save(); self.brain.update_settings(self.settings); self.apply_theme(); win.destroy()
-        tk.Button(win, text="SAVE & APPLY ALL", command=_save, bg=theme["accent"], fg=theme["bg"], font=("Consolas", 11, "bold"), bd=0).pack(pady=20, fill=tk.X, padx=40)
+            self.settings_store.save(); self.brain.update_settings(self.settings); self.apply_theme()
+            new_theme = self.themes.get(self.settings["theme"], self.themes["Neon Orange"])
+            win.configure(bg=new_theme["bg"]); container.configure(bg=new_theme["bg"])
+            for widget in container.winfo_children():
+                try: widget.configure(bg=new_theme["bg"], fg=new_theme["text"])
+                except: pass
+                if isinstance(widget, tk.Label): widget.configure(fg=new_theme["accent"])
+                if isinstance(widget, tk.Button): widget.configure(bg=new_theme["field"], fg=new_theme["accent"])
+            btn_apply.configure(bg=new_theme["accent"], fg=new_theme["bg"])
+            btn_save.configure(bg=new_theme["field"], fg=new_theme["accent"])
+
+        btn_apply = tk.Button(win, text="APPLY", command=_apply, bg=theme["accent"], fg=theme["bg"], font=("Consolas", 11, "bold"), bd=0)
+        btn_apply.pack(pady=(20, 5), fill=tk.X, padx=40)
+        btn_save = tk.Button(win, text="SAVE & CLOSE", command=lambda: [_apply(), win.destroy()], bg=theme["field"], fg=theme["accent"], font=("Consolas", 11, "bold"), bd=0)
+        btn_save.pack(pady=5, fill=tk.X, padx=40)
 
     def _refresh_chats(self):
         self.chat_list.delete(0, tk.END)
